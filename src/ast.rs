@@ -8,7 +8,7 @@ use select::Select;
 // keywords
 pub const SELECT: &str = "select";
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub enum Error {
     #[error("Expected {expected:?}, found {found:?}")]
     InvalidToken {
@@ -18,9 +18,14 @@ pub enum Error {
     },
     #[error("Reached unexpected end of input")]
     UnexpectedEnd,
+    #[error("Encountered unclosed bracket")]
+    UnclosedBracket { range: Range<usize> },
+    #[error("No fields specified")]
+    MissingFields { range: Range<usize> },
 }
 
 impl Error {
+    #[must_use]
     pub fn invalid_token(expected: SpanType, found: SpanType, range: Range<usize>) -> Error {
         Error::InvalidToken {
             expected,
@@ -36,6 +41,8 @@ pub struct Ast {
 }
 
 impl Ast {
+    /// # Errors
+    /// Returns an error if input input + tokens are invalid
     pub fn from_lexer<T>(input: &str, tokens: Lexer<T>) -> Result<Ast, Error>
     where
         T: Iterator<Item = char>,
@@ -56,7 +63,7 @@ impl Ast {
                     }) => return Err(Error::invalid_token(SpanType::Equal, found, range)),
                     None => return Err(Error::UnexpectedEnd),
                 }
-                ast.select = Some(Self::parse_select(input, &mut peekable_tokens)?);
+                ast.select = Some(Self::parse_select(input, &mut peekable_tokens, 0)?);
             }
         }
 

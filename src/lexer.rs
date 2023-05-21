@@ -14,36 +14,36 @@ impl<T> Lexer<T>
 where
     T: Iterator<Item = char>,
 {
-    fn current_is_char_and_next_is_not_char(&mut self, token_type: &TokenType) -> bool {
+    fn current_is_char_and_next_is_not_char(&mut self, token_type: TokenType) -> bool {
         let next = self.tokens.peek().map(|x| &x.token_type);
 
-        (token_type == &TokenType::Char
+        (token_type == TokenType::Char
             && next != Some(&TokenType::Char)
             && next != Some(&TokenType::Minus))
             || self.next_will_be_arrow()
     }
 
-    fn current_is_double_colon_and_next_is_double_colon(&mut self, token_type: &TokenType) -> bool {
-        token_type == &TokenType::DoubleColon
+    fn current_is_double_colon_and_next_is_double_colon(&mut self, token_type: TokenType) -> bool {
+        token_type == TokenType::DoubleColon
             && self.tokens.peek().map(|x| &x.token_type) == Some(&TokenType::DoubleColon)
     }
 
     fn current_is_double_colon_and_previous_was_double_colon(
         &mut self,
-        token_type: &TokenType,
+        token_type: TokenType,
     ) -> bool {
-        token_type == &TokenType::DoubleColon && self.previous == Some(TokenType::DoubleColon)
+        token_type == TokenType::DoubleColon && self.previous == Some(TokenType::DoubleColon)
     }
 
-    fn current_is_minus_and_next_angle_bracket_close(&mut self, token_type: &TokenType) -> bool {
-        token_type == &TokenType::Minus && self.previous == Some(TokenType::AngleBracketsClose)
+    fn current_is_minus_and_next_angle_bracket_close(&mut self, token_type: TokenType) -> bool {
+        token_type == TokenType::Minus && self.previous == Some(TokenType::AngleBracketsClose)
     }
 
     fn current_is_angle_bracket_close_and_previous_was_minus(
         &mut self,
-        token_type: &TokenType,
+        token_type: TokenType,
     ) -> bool {
-        token_type == &TokenType::AngleBracketsClose && self.previous == Some(TokenType::Minus)
+        token_type == TokenType::AngleBracketsClose && self.previous == Some(TokenType::Minus)
     }
 
     fn set_previous(&mut self, token_type: TokenType) {
@@ -61,7 +61,7 @@ fn one_range(pos: usize) -> Range<usize> {
     pos..(pos + 1)
 }
 
-fn as_single_item(token_type: &TokenType, pos: usize) -> Option<Span> {
+fn as_single_item(token_type: TokenType, pos: usize) -> Option<Span> {
     match token_type {
         TokenType::Equal => Some(Span {
             span_type: SpanType::Equal,
@@ -128,12 +128,12 @@ where
 
             let start_pos = start.expect("start is always set");
 
-            if self.current_is_double_colon_and_next_is_double_colon(&token.token_type) {
+            if self.current_is_double_colon_and_next_is_double_colon(token.token_type) {
                 self.set_previous(token.token_type);
                 continue;
             }
 
-            if self.current_is_double_colon_and_previous_was_double_colon(&token.token_type) {
+            if self.current_is_double_colon_and_previous_was_double_colon(token.token_type) {
                 let range = start_pos..(token.pos + 1);
 
                 self.set_previous(token.token_type);
@@ -143,12 +143,12 @@ where
                 });
             }
 
-            if self.current_is_minus_and_next_angle_bracket_close(&token.token_type) {
+            if self.current_is_minus_and_next_angle_bracket_close(token.token_type) {
                 self.set_previous(token.token_type);
                 continue;
             }
 
-            if self.current_is_angle_bracket_close_and_previous_was_minus(&token.token_type) {
+            if self.current_is_angle_bracket_close_and_previous_was_minus(token.token_type) {
                 if self.tokens.peek().map(|x| &x.token_type) == Some(&TokenType::AngleBracketsClose)
                 {
                     // lets roll forward
@@ -169,12 +169,12 @@ where
                 });
             }
 
-            if let Some(span) = as_single_item(&token.token_type, start_pos) {
+            if let Some(span) = as_single_item(token.token_type, start_pos) {
                 self.set_previous(token.token_type);
                 return Some(span);
             }
 
-            if self.current_is_char_and_next_is_not_char(&token.token_type) {
+            if self.current_is_char_and_next_is_not_char(token.token_type) {
                 let range = start_pos..(token.pos + 1);
 
                 self.set_previous(token.token_type);

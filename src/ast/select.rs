@@ -7,6 +7,7 @@ impl Ast {
     pub(crate) fn parse_select<T>(
         input: &str,
         tokens: &mut Peekable<Lexer<T>>,
+        level: usize,
     ) -> Result<Select, Error>
     where
         T: Iterator<Item = char>,
@@ -26,10 +27,10 @@ impl Ast {
                         ));
                     }
                     if let Some(found_alias) = alias {
-                        select.fields.push(Field::Aliased {
-                            alias: found_alias,
-                            column: input[token.range.clone()].to_string(),
-                        });
+                        select.fields.push(Field::aliased(
+                            input[token.range.clone()].to_string(),
+                            found_alias,
+                        ));
 
                         alias = None;
                     } else if ![Some(&SpanType::Alias), Some(&SpanType::CaptureStart)]
@@ -37,17 +38,15 @@ impl Ast {
                     {
                         select
                             .fields
-                            .push(Field::Simple(input[token.range.clone()].to_string()))
+                            .push(Field::new(input[token.range.clone()].to_string()));
                     }
                 }
                 SpanType::CaptureStart
                     if previous.as_ref().map(|x| x.span_type) == Some(SpanType::String) =>
                 {
-                    let inner_select = Self::parse_select(input, tokens)?;
+                    let inner_select = Self::parse_select(input, tokens, level + 1)?;
                     select.fields.push(Field::Nested(
-                        Box::new(Field::Simple(
-                            input[previous.unwrap().range.clone()].to_string(),
-                        )),
+                        FieldKey::new(input[previous.unwrap().range.clone()].to_string()),
                         inner_select,
                     ));
                 }
@@ -80,10 +79,21 @@ impl Ast {
                         token.range,
                     ));
                 }
-                SpanType::CaptureEnd => {
+                SpanType::CaptureEnd if level > 0 && previous.is_none() => {
+                    return Err(Error::MissingFields { range: token.range })
+                }
+                SpanType::CaptureEnd if level > 0 => {
                     break;
                 }
-                found => return Err(Error::invalid_token(SpanType::Equal, found, token.range)),
+                SpanType::CaptureEnd if level == 0 => {
+                    return Err(Error::UnclosedBracket { range: token.range })
+                }
+                found if previous.is_none() => {
+                    return Err(Error::invalid_token(SpanType::String, found, token.range))
+                }
+                found => {
+                    return Err(Error::invalid_token(SpanType::Equal, found, token.range));
+                }
             }
 
             previous = Some(token);
@@ -104,9 +114,40 @@ pub struct Select {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Field {
-    Simple(String),
-    Aliased { alias: String, column: String },
-    Nested(Box<Field>, Select),
+    Key(FieldKey),
+    Nested(FieldKey, Select),
+}
+
+impl Field {
+    pub fn new(column: String) -> Field {
+        Field::Key(FieldKey::new(column))
+    }
+
+    pub fn aliased(column: String, alias: String) -> Field {
+        Field::Key(FieldKey::aliased(column, alias))
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct FieldKey {
+    column: String,
+    alias: Option<String>,
+}
+
+impl FieldKey {
+    pub fn new(column: String) -> FieldKey {
+        FieldKey {
+            column,
+            alias: None,
+        }
+    }
+
+    pub fn aliased(column: String, alias: String) -> FieldKey {
+        FieldKey {
+            alias: Some(alias),
+            column,
+        }
+    }
 }
 
 #[test]
@@ -116,8 +157,8 @@ fn simple_select() {
     let expected = Ast {
         select: Some(Select {
             fields: vec![
-                Field::Simple("first_name".to_string()),
-                Field::Simple("age".to_string()),
+                Field::Key(FieldKey::new("first_name".to_string())),
+                Field::Key(FieldKey::new("age".to_string())),
             ],
         }),
     };
@@ -134,11 +175,11 @@ fn select_with_alias() {
     let expected = Ast {
         select: Some(Select {
             fields: vec![
-                Field::Aliased {
-                    alias: "firstName".to_string(),
+                Field::Key(FieldKey {
+                    alias: Some("firstName".to_string()),
                     column: "first_name".to_string(),
-                },
-                Field::Simple("age".to_string()),
+                }),
+                Field::Key(FieldKey::new("age".to_string())),
             ],
         }),
     };
@@ -155,18 +196,18 @@ fn nested_select() {
     let expected = Ast {
         select: Some(Select {
             fields: vec![
-                Field::Simple("id".to_string()),
+                Field::new("id".to_string()),
                 Field::Nested(
-                    Box::new(Field::Simple("projects".to_string())),
+                    FieldKey::new("projects".to_string()),
                     Select {
                         fields: vec![
-                            Field::Simple("id".to_string()),
+                            Field::new("id".to_string()),
                             Field::Nested(
-                                Box::new(Field::Simple("tasks".to_string())),
+                                FieldKey::new("tasks".to_string()),
                                 Select {
                                     fields: vec![
-                                        Field::Simple("id".to_string()),
-                                        Field::Simple("name".to_string()),
+                                        Field::new("id".to_string()),
+                                        Field::new("name".to_string()),
                                     ],
                                 },
                             ),
@@ -179,4 +220,37 @@ fn nested_select() {
     let out = Ast::from_lexer(input, lexer).unwrap();
 
     assert_eq!(expected, out);
+}
+
+#[test]
+fn invalid_selects() {
+    let tests = [
+        (
+            "select=()",
+            Error::InvalidToken {
+                expected: SpanType::String,
+                found: SpanType::CaptureStart,
+                range: 7..8,
+            },
+        ),
+        (
+            "select=a(()",
+            Error::InvalidToken {
+                expected: SpanType::String,
+                found: SpanType::CaptureStart,
+                range: 9..10,
+            },
+        ),
+        ("select=)", Error::UnclosedBracket { range: 7..8 }),
+        ("select=a()", Error::MissingFields { range: 9..10 }),
+        ("select=", Error::UnexpectedEnd),
+        ("select=a:", Error::UnexpectedEnd),
+    ];
+
+    for (input, expected) in tests {
+        assert_eq!(
+            expected,
+            Ast::from_lexer(input, Lexer::new(input.chars())).unwrap_err()
+        );
+    }
 }
