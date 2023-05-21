@@ -44,21 +44,19 @@ impl Ast {
 
         let mut peekable_tokens = tokens.peekable();
         while let Some(token) = peekable_tokens.next() {
-            if token.span_type == SpanType::String {
-                if SELECT == &input[token.range] {
-                    match peekable_tokens.next() {
-                        Some(Span {
-                            span_type: SpanType::Equal,
-                            ..
-                        }) => (),
-                        Some(Span {
-                            span_type: found,
-                            range,
-                        }) => return Err(Error::invalid_token(SpanType::Equal, found, range)),
-                        None => return Err(Error::UnexpectedEnd),
-                    }
-                    ast.select = Some(Self::parse_select(input, &mut peekable_tokens)?);
+            if token.span_type == SpanType::String && SELECT == &input[token.range] {
+                match peekable_tokens.next() {
+                    Some(Span {
+                        span_type: SpanType::Equal,
+                        ..
+                    }) => (),
+                    Some(Span {
+                        span_type: found,
+                        range,
+                    }) => return Err(Error::invalid_token(SpanType::Equal, found, range)),
+                    None => return Err(Error::UnexpectedEnd),
                 }
+                ast.select = Some(Self::parse_select(input, &mut peekable_tokens)?);
             }
         }
 

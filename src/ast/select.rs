@@ -32,16 +32,12 @@ impl Ast {
                         });
 
                         alias = None;
-                    } else {
-                        if [Some(&SpanType::Alias), Some(&SpanType::CaptureStart)]
-                            .contains(&tokens.peek().map(|x| &x.span_type))
-                        {
-                            ()
-                        } else {
-                            select
-                                .fields
-                                .push(Field::Simple(input[token.range.clone()].to_string()))
-                        }
+                    } else if ![Some(&SpanType::Alias), Some(&SpanType::CaptureStart)]
+                        .contains(&tokens.peek().map(|x| &x.span_type))
+                    {
+                        select
+                            .fields
+                            .push(Field::Simple(input[token.range.clone()].to_string()))
                     }
                 }
                 SpanType::CaptureStart
