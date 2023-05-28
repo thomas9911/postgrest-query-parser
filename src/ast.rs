@@ -22,6 +22,8 @@ pub enum Error {
     UnclosedBracket { range: Range<usize> },
     #[error("No fields specified")]
     MissingFields { range: Range<usize> },
+    #[error("Invalid nested fields")]
+    InvalidNesting { range: Range<usize> },
 }
 
 impl Error {
