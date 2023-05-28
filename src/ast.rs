@@ -7,6 +7,9 @@ use select::Select;
 
 // keywords
 pub const SELECT: &str = "select";
+pub const ORDER: &str = "order";
+pub const LIMIT: &str = "limit";
+pub const OFFSET: &str = "offset";
 
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum Error {
