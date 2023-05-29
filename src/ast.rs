@@ -4,8 +4,11 @@ use std::ops::Range;
 
 use crate::lexer::{Lexer, Span, SpanType};
 
+pub mod filter;
 pub mod order;
 pub mod select;
+
+use filter::Filter;
 use order::Order;
 use select::Select;
 
