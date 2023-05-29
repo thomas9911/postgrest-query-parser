@@ -244,6 +244,9 @@ impl Ast {
                 SpanType::CaptureEnd if level == 0 => {
                     return Err(Error::UnclosedBracket { range: token.range })
                 }
+                SpanType::And => {
+                    break;
+                }
                 found if previous.is_none() => {
                     return Err(Error::invalid_token(SpanType::String, found, token.range))
                 }
@@ -356,6 +359,7 @@ fn simple_select() {
                 Field::Key(FieldKey::new("age".to_string())),
             ],
         }),
+        ..Default::default()
     };
     let out = Ast::from_lexer(input, lexer).unwrap();
 
@@ -377,6 +381,7 @@ fn select_with_alias() {
                 Field::Key(FieldKey::new("age".to_string())),
             ],
         }),
+        ..Default::default()
     };
     let out = Ast::from_lexer(input, lexer).unwrap();
 
@@ -411,6 +416,7 @@ fn nested_select() {
                 ),
             ],
         }),
+        ..Default::default()
     };
     let out = Ast::from_lexer(input, lexer).unwrap();
 
@@ -445,6 +451,7 @@ fn nested_select_with_aliases() {
                 ),
             ],
         }),
+        ..Default::default()
     };
     let out = Ast::from_lexer(input, lexer).unwrap();
 
@@ -466,6 +473,7 @@ fn select_with_json() {
                 ),
             ],
         }),
+        ..Default::default()
     };
     let out = Ast::from_lexer(input, lexer).unwrap();
 
@@ -490,6 +498,7 @@ fn select_with_binary_json_bug() {
                 }),
             ],
         }),
+        ..Default::default()
     };
     let out = Ast::from_lexer(input, lexer).unwrap();
 
@@ -525,6 +534,7 @@ fn select_with_multiple_json() {
                 ),
             ],
         }),
+        ..Default::default()
     };
     let out = Ast::from_lexer(input, lexer).unwrap();
 
@@ -561,6 +571,7 @@ fn select_with_nested_json() {
                 ),
             ],
         }),
+        ..Default::default()
     };
     let out = Ast::from_lexer(input, lexer).unwrap();
 
