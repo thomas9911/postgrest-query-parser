@@ -46,7 +46,7 @@ impl Ast {
         let mut json_path: Option<Vec<JsonPathFormat<Field>>> = None;
 
         while let Some(token) = tokens.next() {
-            dbg!(&token, &select);
+            // dbg!(&token, &select);
             // dbg!((&json_path, &token.span_type, &previous.as_ref().map(|x| x.span_type)));
             // dbg!((&json_path, &token.span_type));
             match token.span_type {

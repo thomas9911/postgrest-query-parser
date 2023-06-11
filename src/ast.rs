@@ -17,6 +17,7 @@ pub const SELECT: &str = "select";
 pub const ORDER: &str = "order";
 pub const LIMIT: &str = "limit";
 pub const OFFSET: &str = "offset";
+pub const RESERVED_KEYWORDS: [&str; 4] = [SELECT, ORDER, LIMIT, OFFSET];
 
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum Error {
@@ -40,6 +41,8 @@ pub enum Error {
     InvalidOrderDirection { found: String, range: Range<usize> },
     #[error("Invalid integer found: {found:?}")]
     InvalidInteger { found: String, range: Range<usize> },
+    #[error("Operator not implemented (yet), operator: {found:?}")]
+    OperatorNotImplemented { found: String, range: Range<usize> },
 }
 
 impl Error {
@@ -59,6 +62,7 @@ pub struct Ast {
     pub order: Option<Order>,
     pub offset: Option<usize>,
     pub limit: Option<usize>,
+    pub filter: Vec<Filter>,
 }
 
 impl Ast {
@@ -114,12 +118,13 @@ impl Ast {
                 }
                 ast.offset = Some(Self::parse_integer(input, &mut peekable_tokens)?);
             }
-            if token.span_type == SpanType::String && LIMIT == &input[token.range] {
+            if token.span_type == SpanType::String && LIMIT == &input[token.range.clone()] {
                 match peekable_tokens.next() {
                     Some(Span {
                         span_type: SpanType::Equal,
                         ..
                     }) => (),
+
                     Some(Span {
                         span_type: found,
                         range,
@@ -127,6 +132,28 @@ impl Ast {
                     None => return Err(Error::UnexpectedEnd),
                 }
                 ast.limit = Some(Self::parse_integer(input, &mut peekable_tokens)?);
+            }
+            if token.span_type == SpanType::String
+                && !RESERVED_KEYWORDS.contains(&&input[token.range.clone()])
+            {
+                match peekable_tokens.peek() {
+                    Some(Span {
+                        span_type: SpanType::Equal,
+                        ..
+                    }) => (),
+                    Some(Span {
+                        span_type: SpanType::PathSeparator,
+                        ..
+                    }) => (),
+                    Some(Span {
+                        span_type: found,
+                        range,
+                    }) => return Err(Error::invalid_token(SpanType::Equal, *found, range.clone())),
+                    None => return Err(Error::UnexpectedEnd),
+                }
+                let field = &input[token.range];
+                ast.filter
+                    .push(Self::parse_filter(field, input, &mut peekable_tokens)?);
             }
         }
 

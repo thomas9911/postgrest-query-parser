@@ -1,10 +1,8 @@
 use std::fmt::Debug;
 use std::iter::Peekable;
-use std::ops::Deref;
-use std::str::FromStr;
 
 use crate::ast::{Ast, Error};
-use crate::lexer::{Lexer, Span, SpanType};
+use crate::lexer::{Lexer, SpanType};
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Order {
