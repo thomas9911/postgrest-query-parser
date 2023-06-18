@@ -1,5 +1,8 @@
 # postgrest-query-parser
 
+Note that not all operators are implemented, you get an
+`Error::OperatorNotImplemented` error when this happens.
+
 ## example
 
 ```rust
