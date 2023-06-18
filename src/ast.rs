@@ -2,27 +2,26 @@ use std::fmt::Debug;
 use std::iter::Peekable;
 use std::ops::Range;
 
-use crate::ast::filter::{Operator, Path};
-use crate::ast::order::OrderItem;
-use crate::ast::select::{Field, FieldKey};
-use crate::{
-    ast::filter::InnerFilter,
-    lexer::{Lexer, Span, SpanType},
-};
+use crate::lexer::{Lexer, Span, SpanType};
 
 pub mod filter;
 pub mod order;
 pub mod select;
 
-use filter::Filter;
-use order::Order;
-use select::Select;
+pub use filter::Filter;
+pub use filter::InnerFilter;
+pub use filter::Path as FilterPath;
+pub use order::Order;
+pub use order::OrderItem;
+pub use select::Select;
+pub use select::{Field, FieldKey};
 
 // keywords
 pub const SELECT: &str = "select";
 pub const ORDER: &str = "order";
 pub const LIMIT: &str = "limit";
 pub const OFFSET: &str = "offset";
+/// list of the constants in this module
 pub const RESERVED_KEYWORDS: [&str; 4] = [SELECT, ORDER, LIMIT, OFFSET];
 
 #[derive(thiserror::Error, Debug, PartialEq)]
@@ -49,6 +48,8 @@ pub enum Error {
     InvalidInteger { found: String, range: Range<usize> },
     #[error("Operator not implemented (yet), operator: {found:?}")]
     OperatorNotImplemented { found: String, range: Range<usize> },
+    #[error("Invalid not order, not should come before the operator")]
+    InvalidNotOrdering { range: Range<usize> },
 }
 
 impl Error {
@@ -257,12 +258,12 @@ fn simple_combined_query() {
         }),
         filter: vec![
             Filter::One(InnerFilter {
-                path: Path::Leaf("id".to_string()),
+                path: FilterPath::Leaf("id".to_string()),
                 operator: filter::Operator::GreaterThanEqual,
                 value: "14".to_string(),
             }),
             Filter::One(InnerFilter {
-                path: Path::Leaf("id".to_string()),
+                path: FilterPath::Leaf("id".to_string()),
                 operator: filter::Operator::LessThan,
                 value: "54".to_string(),
             }),

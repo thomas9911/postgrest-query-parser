@@ -3,6 +3,8 @@ use std::iter::Peekable;
 use crate::ast::{Ast, Error};
 use crate::lexer::{Lexer, SpanType};
 
+// wauw this is a long line with a lot of text ect. This mean that this will break to the next line hopefully because of rustfmt config
+
 pub mod consts {
     pub const EQ: &str = "eq";
     pub const GT: &str = "gt";
@@ -127,7 +129,6 @@ impl Ast {
                 })
             }
             _ => {
-                // Filter::One(InnerFilter { path: (), operator: (), value: () })
                 let mut not = false;
                 let mut operator = None;
                 let mut value = None;
@@ -138,7 +139,16 @@ impl Ast {
                     match token.span_type {
                         SpanType::PathSeparator => {}
                         SpanType::String if operator.is_some() => {
-                            value = Some(input[token.range.clone()].to_string());
+                            match &input[token.range.clone()] {
+                                consts::NOT => {
+                                    return Err(Error::InvalidNotOrdering {
+                                        range: token.range.clone(),
+                                    })
+                                }
+                                path_value => {
+                                    value = Some(path_value.to_string());
+                                }
+                            }
                         }
                         SpanType::String if path_closed => match &input[token.range.clone()] {
                             consts::EQ => {
@@ -158,6 +168,9 @@ impl Ast {
                             }
                             consts::LTE => {
                                 operator = Some(Operator::LessThanEqual);
+                            }
+                            consts::NOT => {
+                                not = true;
                             }
 
                             operator => {
@@ -182,11 +195,17 @@ impl Ast {
                     }
                 }
 
-                return Ok(Filter::One(InnerFilter {
+                let filter = Filter::One(InnerFilter {
                     path,
                     operator: operator.unwrap(),
                     value: value.unwrap(),
-                }));
+                });
+
+                if not {
+                    return Ok(Filter::Not(Box::new(filter)));
+                } else {
+                    return Ok(filter);
+                }
             }
         };
     }
@@ -205,6 +224,33 @@ fn simple_filter() {
         ..Default::default()
     };
     let out = Ast::from_lexer(input, lexer).unwrap();
+
+    assert_eq!(expected, out);
+}
+
+#[test]
+fn simple_not_filter() {
+    let input = "age=not.gte.18";
+    let lexer = Lexer::new(input.chars());
+    let expected = Ast {
+        filter: vec![Filter::Not(Box::new(Filter::One(InnerFilter {
+            path: Path::Leaf("age".to_string()),
+            operator: Operator::GreaterThanEqual,
+            value: "18".to_string(),
+        })))],
+        ..Default::default()
+    };
+    let out = Ast::from_lexer(input, lexer).unwrap();
+
+    assert_eq!(expected, out);
+}
+
+#[test]
+fn invalid_not_filter() {
+    let input = "age=gte.not.18";
+    let lexer = Lexer::new(input.chars());
+    let expected = Error::InvalidNotOrdering { range: 8..11 };
+    let out = Ast::from_lexer(input, lexer).unwrap_err();
 
     assert_eq!(expected, out);
 }
