@@ -1,5 +1,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 //!
+//! Note that not all operators are implemented, you get an `Error::OperatorNotImplemented` error when this happens.
+//!
 //! ## example
 //!
 //! ```rust
@@ -146,7 +148,9 @@
 //!
 
 pub mod ast;
+pub mod error;
 pub mod lexer;
 
 pub use ast::Ast;
+pub use error::Error;
 pub use lexer::Lexer;
