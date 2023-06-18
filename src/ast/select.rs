@@ -328,8 +328,8 @@ impl Field {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FieldKey {
-    column: String,
-    alias: Option<String>,
+    pub column: String,
+    pub alias: Option<String>,
 }
 
 impl FieldKey {

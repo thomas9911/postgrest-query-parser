@@ -3,36 +3,38 @@ use std::iter::Peekable;
 use crate::ast::{Ast, Error};
 use crate::lexer::{Lexer, SpanType};
 
-const EQ: &str = "eq";
-const GT: &str = "gt";
-const GTE: &str = "gte";
-const LT: &str = "lt";
-const LTE: &str = "lte";
-const NEQ: &str = "neq";
-const LIKE: &str = "like";
-const ILIKE: &str = "ilike";
-const MATCH: &str = "match";
-const IMATCH: &str = "imatch";
-const IN: &str = "in";
-const IS: &str = "is";
-const ISDISTINCT: &str = "isdistinct";
-const FTS: &str = "fts";
-const PLFTS: &str = "plfts";
-const PHFTS: &str = "phfts";
-const WFTS: &str = "wfts";
-const CS: &str = "cs";
-const CD: &str = "cd";
-const OV: &str = "ov";
-const SL: &str = "sl";
-const SR: &str = "sr";
-const NXR: &str = "nxr";
-const NXL: &str = "nxl";
-const ADJ: &str = "adj";
-const NOT: &str = "not";
-const OR: &str = "or";
-const AND: &str = "and";
-const ALL: &str = "all";
-const ANY: &str = "any";
+pub mod consts {
+    pub const EQ: &str = "eq";
+    pub const GT: &str = "gt";
+    pub const GTE: &str = "gte";
+    pub const LT: &str = "lt";
+    pub const LTE: &str = "lte";
+    pub const NEQ: &str = "neq";
+    pub const LIKE: &str = "like";
+    pub const ILIKE: &str = "ilike";
+    pub const MATCH: &str = "match";
+    pub const IMATCH: &str = "imatch";
+    pub const IN: &str = "in";
+    pub const IS: &str = "is";
+    pub const ISDISTINCT: &str = "isdistinct";
+    pub const FTS: &str = "fts";
+    pub const PLFTS: &str = "plfts";
+    pub const PHFTS: &str = "phfts";
+    pub const WFTS: &str = "wfts";
+    pub const CS: &str = "cs";
+    pub const CD: &str = "cd";
+    pub const OV: &str = "ov";
+    pub const SL: &str = "sl";
+    pub const SR: &str = "sr";
+    pub const NXR: &str = "nxr";
+    pub const NXL: &str = "nxl";
+    pub const ADJ: &str = "adj";
+    pub const NOT: &str = "not";
+    pub const OR: &str = "or";
+    pub const AND: &str = "and";
+    pub const ALL: &str = "all";
+    pub const ANY: &str = "any";
+}
 
 pub type Value = String;
 
@@ -46,9 +48,9 @@ pub enum Filter {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct InnerFilter {
-    path: Path,
-    operator: Operator,
-    value: Value,
+    pub path: Path,
+    pub operator: Operator,
+    pub value: Value,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -112,15 +114,15 @@ impl Ast {
         T: Iterator<Item = char>,
     {
         match field {
-            OR => {
+            consts::OR => {
                 return Err(Error::OperatorNotImplemented {
-                    found: OR.to_string(),
+                    found: consts::OR.to_string(),
                     range: 0..0,
                 })
             }
-            AND => {
+            consts::AND => {
                 return Err(Error::OperatorNotImplemented {
-                    found: AND.to_string(),
+                    found: consts::AND.to_string(),
                     range: 0..0,
                 })
             }
@@ -139,14 +141,23 @@ impl Ast {
                             value = Some(input[token.range.clone()].to_string());
                         }
                         SpanType::String if path_closed => match &input[token.range.clone()] {
-                            GTE => {
+                            consts::EQ => {
+                                operator = Some(Operator::Equal);
+                            }
+                            consts::NEQ => {
+                                operator = Some(Operator::NotEqual);
+                            }
+                            consts::GT => {
                                 operator = Some(Operator::GreaterThan);
                             }
-                            LT => {
+                            consts::GTE => {
+                                operator = Some(Operator::GreaterThanEqual);
+                            }
+                            consts::LT => {
                                 operator = Some(Operator::LessThan);
                             }
-                            EQ => {
-                                operator = Some(Operator::Equal);
+                            consts::LTE => {
+                                operator = Some(Operator::LessThanEqual);
                             }
 
                             operator => {
@@ -188,7 +199,7 @@ fn simple_filter() {
     let expected = Ast {
         filter: vec![Filter::One(InnerFilter {
             path: Path::Leaf("age".to_string()),
-            operator: Operator::GreaterThan,
+            operator: Operator::GreaterThanEqual,
             value: "18".to_string(),
         })],
         ..Default::default()
@@ -206,7 +217,7 @@ fn multiple_simple_filter() {
         filter: vec![
             Filter::One(InnerFilter {
                 path: Path::Leaf("age".to_string()),
-                operator: Operator::GreaterThan,
+                operator: Operator::GreaterThanEqual,
                 value: "18".to_string(),
             }),
             Filter::One(InnerFilter {

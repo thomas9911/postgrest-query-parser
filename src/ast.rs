@@ -2,7 +2,13 @@ use std::fmt::Debug;
 use std::iter::Peekable;
 use std::ops::Range;
 
-use crate::lexer::{Lexer, Span, SpanType};
+use crate::ast::filter::{Operator, Path};
+use crate::ast::order::OrderItem;
+use crate::ast::select::{Field, FieldKey};
+use crate::{
+    ast::filter::InnerFilter,
+    lexer::{Lexer, Span, SpanType},
+};
 
 pub mod filter;
 pub mod order;
@@ -224,6 +230,43 @@ fn offset_and_limit() {
     let expected = Ast {
         limit: Some(512),
         offset: Some(9321),
+        ..Default::default()
+    };
+    let out = Ast::from_lexer(input, lexer).unwrap();
+
+    assert_eq!(expected, out);
+}
+
+#[test]
+fn simple_combined_query() {
+    let input = "id=gte.14&order=id.asc&select=id&id=lt.54";
+    let lexer = Lexer::new(input.chars());
+    let expected = Ast {
+        select: Some(Select {
+            fields: vec![Field::Key(FieldKey {
+                column: "id".to_string(),
+                alias: None,
+            })],
+        }),
+        order: Some(Order {
+            fields: vec![OrderItem {
+                field: "id".to_string(),
+                operator: order::Operator::Asc,
+                nulls_position: None,
+            }],
+        }),
+        filter: vec![
+            Filter::One(InnerFilter {
+                path: Path::Leaf("id".to_string()),
+                operator: filter::Operator::GreaterThanEqual,
+                value: "14".to_string(),
+            }),
+            Filter::One(InnerFilter {
+                path: Path::Leaf("id".to_string()),
+                operator: filter::Operator::LessThan,
+                value: "54".to_string(),
+            }),
+        ],
         ..Default::default()
     };
     let out = Ast::from_lexer(input, lexer).unwrap();

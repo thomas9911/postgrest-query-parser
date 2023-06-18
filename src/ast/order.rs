@@ -6,14 +6,14 @@ use crate::lexer::{Lexer, SpanType};
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Order {
-    fields: Vec<OrderItem>,
+    pub fields: Vec<OrderItem>,
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct OrderItem {
-    field: String,
-    operator: Operator,
-    nulls_position: Option<NullOption>,
+    pub field: String,
+    pub operator: Operator,
+    pub nulls_position: Option<NullOption>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -48,8 +48,10 @@ impl Ast {
         let mut path_length = 0;
 
         while let Some(token) = tokens.next() {
-            // dbg!(token);
             match token.span_type {
+                SpanType::And => {
+                    break;
+                }
                 SpanType::String if field_set == false => {
                     order_item.field = input[token.range].to_string();
                     field_set = true;
